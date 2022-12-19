@@ -2,9 +2,10 @@ import { useLoaderData } from "@remix-run/react";
 import { json, LoaderArgs } from "@remix-run/node";
 import { realInput, testInput } from "~/routes/__index/12/input";
 
+type Point = [number, number];
+
 type Node = {
-  x: number;
-  y: number;
+  point: Point;
   height: number;
   neighbors: Node[];
   distance: number;
@@ -16,26 +17,23 @@ type Graph = Record<string, Node>;
 const initializeNodes = (input: string) => {
   const rows = input.split("\n");
   const graph: Record<string, Node> = {};
-  const start = { x: 0, y: 0 };
-  const end = { x: 0, y: 0 };
+  let start: Point = [0, 0];
+  let end: Point = [0, 0];
   rows.forEach((row, x) => {
     for (let y = 0; y < row.length; y++) {
       graph[`${x}, ${y}`] = {
-        x,
-        y,
+        point: [x, y],
         height: row.charCodeAt(y),
         neighbors: [],
         distance: Infinity,
         visited: false,
       };
       if (row[y] === "S") {
-        start.x = x;
-        start.y = y;
+        start = [x, y];
         graph[`${x}, ${y}`].height = "a".charCodeAt(0);
       }
       if (row[y] === "E") {
-        end.x = x;
-        end.y = y;
+        end = [x, y];
         graph[`${x}, ${y}`].height = "z".charCodeAt(0);
       }
     }
@@ -43,12 +41,12 @@ const initializeNodes = (input: string) => {
   return { start, end, graph };
 };
 
-const setNewStart = (graph: Graph, start: { x: number; y: number }) => {
+const setNewStart = (graph: Graph, start: Point) => {
   for (const key in graph) {
     const node = graph[key];
     node.distance = Infinity;
     node.visited = false;
-    if (node.x === start.x && node.y === start.y) {
+    if (node.point[0] === start[0] && node.point[1] === start[1]) {
       node.distance = 0;
     }
   }
@@ -57,7 +55,7 @@ const setNewStart = (graph: Graph, start: { x: number; y: number }) => {
 const populateNeighbors = (graph: Graph, downhill: boolean = false) => {
   for (const key in graph) {
     const node = graph[key];
-    const { x, y } = node;
+    const [x, y] = node.point;
     node.neighbors = [
       graph[`${x - 1}, ${y}`],
       graph[`${x}, ${y - 1}`],
@@ -127,8 +125,8 @@ const getMinPath = (input: string) => {
 export const loader = ({ request }: LoaderArgs) => {
   const { end: testEnd, graph: testGraph } = makeGraph(testInput);
   const { end: realEnd, graph: realGraph } = makeGraph(realInput);
-  const testDistance = testGraph[`${testEnd.x}, ${testEnd.y}`].distance;
-  const realDistance = realGraph[`${realEnd.x}, ${realEnd.y}`].distance;
+  const testDistance = testGraph[testEnd.join(", ")].distance;
+  const realDistance = realGraph[realEnd.join(", ")].distance;
   console.log("Part I");
   console.log(testEnd, testDistance);
   console.log(realEnd, realDistance);
