@@ -13,7 +13,48 @@ type Node = {
 
 type Graph = Record<string, Node>;
 
-const populateNeighbors = (graph: Graph, reverse: boolean = false) => {
+const initializeNodes = (input: string) => {
+  const rows = input.split("\n");
+  const graph: Record<string, Node> = {};
+  const start = { x: 0, y: 0 };
+  const end = { x: 0, y: 0 };
+  rows.forEach((row, x) => {
+    for (let y = 0; y < row.length; y++) {
+      graph[`${x}, ${y}`] = {
+        x,
+        y,
+        height: row.charCodeAt(y),
+        neighbors: [],
+        distance: Infinity,
+        visited: false,
+      };
+      if (row[y] === "S") {
+        start.x = x;
+        start.y = y;
+        graph[`${x}, ${y}`].height = "a".charCodeAt(0);
+      }
+      if (row[y] === "E") {
+        end.x = x;
+        end.y = y;
+        graph[`${x}, ${y}`].height = "z".charCodeAt(0);
+      }
+    }
+  });
+  return { start, end, graph };
+};
+
+const setNewStart = (graph: Graph, start: { x: number; y: number }) => {
+  for (const key in graph) {
+    const node = graph[key];
+    node.distance = Infinity;
+    node.visited = false;
+    if (node.x === start.x && node.y === start.y) {
+      node.distance = 0;
+    }
+  }
+};
+
+const populateNeighbors = (graph: Graph, downhill: boolean = false) => {
   for (const key in graph) {
     const node = graph[key];
     const { x, y } = node;
@@ -25,7 +66,7 @@ const populateNeighbors = (graph: Graph, reverse: boolean = false) => {
     ].filter(
       (x) =>
         !!x &&
-        (reverse ? x.height >= node.height + -1 : x.height <= node.height + 1)
+        (downhill ? x.height >= node.height + -1 : x.height <= node.height + 1)
     );
   }
 };
@@ -56,46 +97,7 @@ const populateDistances = (graph: Graph) => {
   }
 };
 
-const setNewStart = (graph: Graph, start: { x: number; y: number }) => {
-  for (const key in graph) {
-    const node = graph[key];
-    node.distance = Infinity;
-    node.visited = false;
-    if (node.x === start.x && node.y === start.y) {
-      node.distance = 0;
-    }
-  }
-};
-
-const initializeNodes = (input: string) => {
-  const rows = input.split("\n");
-  const graph: Record<string, Node> = {};
-  const start = { x: 0, y: 0 };
-  const end = { x: 0, y: 0 };
-  rows.forEach((row, x) => {
-    for (let y = 0; y < row.length; y++) {
-      graph[`${x}, ${y}`] = {
-        x,
-        y,
-        height: row.charCodeAt(y),
-        neighbors: [],
-        distance: Infinity,
-        visited: false,
-      };
-      if (row[y] === "S") {
-        start.x = x;
-        start.y = y;
-        graph[`${x}, ${y}`].height = "a".charCodeAt(0);
-      }
-      if (row[y] === "E") {
-        end.x = x;
-        end.y = y;
-        graph[`${x}, ${y}`].height = "z".charCodeAt(0);
-      }
-    }
-  });
-  return { start, end, graph };
-};
+// Part I
 const makeGraph = (input: string) => {
   const { start, end, graph } = initializeNodes(input);
   setNewStart(graph, start);
@@ -103,24 +105,18 @@ const makeGraph = (input: string) => {
   populateDistances(graph);
   return { start, end, graph };
 };
-
+// Part II
 const getMinPath = (input: string) => {
-  const { start, end, graph } = initializeNodes(input);
+  const { end, graph } = initializeNodes(input);
   setNewStart(graph, end);
   populateNeighbors(graph, true);
   populateDistances(graph);
-  console.log("populated");
-  // console.log(graph);
   let minPath = Infinity;
   const rows = input.split("\n");
 
   rows.forEach((row, x) => {
     for (let y = 0; y < row.length; y++) {
       if (row[y] === "a" || row[y] === "S") {
-        // console.log("checking", { x, y });
-        // console.log(graph[`${x}, ${y}`].distance);
-        // setNewStart(graph, { x, y });
-        // populateDistances(graph);
         minPath = Math.min(minPath, graph[`${x}, ${y}`].distance);
       }
     }
@@ -130,21 +126,28 @@ const getMinPath = (input: string) => {
 
 export const loader = ({ request }: LoaderArgs) => {
   const { end: testEnd, graph: testGraph } = makeGraph(testInput);
-  // const { end: realEnd, graph: realGraph } = makeGraph(realInput);
-  // console.log(testGraph);
+  const { end: realEnd, graph: realGraph } = makeGraph(realInput);
+  const testDistance = testGraph[`${testEnd.x}, ${testEnd.y}`].distance;
+  const realDistance = realGraph[`${realEnd.x}, ${realEnd.y}`].distance;
   console.log("Part I");
-  console.log(testEnd, testGraph[`${testEnd.x}, ${testEnd.y}`].distance);
-  // console.log(realEnd, realGraph[`${realEnd.x}, ${realEnd.y}`].distance);
+  console.log(testEnd, testDistance);
+  console.log(realEnd, realDistance);
 
   console.log("Part II");
-  console.log("test", getMinPath(testInput));
-  console.log("real", getMinPath(realInput));
-  // console.log(testEnd, testGraph[`${testEnd.x}, ${testEnd.y}`].distance);
-  // console.log(realEnd, realGraph[`${realEnd.x}, ${realEnd.y}`].distance);
+  const testMinPath = getMinPath(testInput);
+  console.log("test", testMinPath);
+  const realMinPath = getMinPath(realInput);
+  console.log("real", realMinPath);
 
   return json({
-    test: "test",
-    real: "real",
+    test: {
+      partI: testDistance,
+      partII: testMinPath,
+    },
+    real: {
+      partI: realDistance,
+      partII: realMinPath,
+    },
   });
 };
 
@@ -153,8 +156,12 @@ export default function HillClimbing() {
 
   return (
     <div>
-      <div>Test: {test}</div>
-      <div>Real: {real}</div>
+      <div>Part I</div>
+      <div>Test: {test.partI}</div>
+      <div>Real: {real.partI}</div>
+      <div>Part II</div>
+      <div>Test: {test.partII}</div>
+      <div>Real: {real.partII}</div>
     </div>
   );
 }
